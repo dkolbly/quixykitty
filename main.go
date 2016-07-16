@@ -32,7 +32,7 @@ import (
 	"encoding/binary"
 	"log"
 	"time"
-	
+
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/paint"
@@ -43,9 +43,8 @@ import (
 	"golang.org/x/mobile/exp/gl/glutil"
 	"golang.org/x/mobile/exp/sprite"
 	"golang.org/x/mobile/exp/sprite/clock"
+	"golang.org/x/mobile/exp/sprite/glsprite"
 	"golang.org/x/mobile/gl"
-		"golang.org/x/mobile/exp/sprite/glsprite"
-
 )
 
 var (
@@ -110,8 +109,15 @@ func main() {
 	})
 }
 
+var gg *Game
+
 func onStart(glctx gl.Context) {
 	var err error
+
+
+	gg = NewGame()
+	gg.start(glctx)
+	
 	program, err = glutil.CreateProgram(glctx, vertexShader, fragmentShader)
 	if err != nil {
 		log.Printf("error creating GL program: %v", err)
@@ -152,8 +158,8 @@ type ThingyArranger struct {
 }
 
 func (ta ThingyArranger) Arrange(e sprite.Engine, n *sprite.Node, t clock.Time) {
-	eng.SetSubTex(n, texs[t % 5])
-	eng.SetTransform(n, f32.Affine{{48, 0, 100},{0, 48, 100}})
+	eng.SetSubTex(n, texs[t%5])
+	eng.SetTransform(n, f32.Affine{{48, 0, 100}, {0, 48, 100}})
 }
 
 func onStop(glctx gl.Context) {
@@ -186,6 +192,8 @@ func onPaint(glctx gl.Context, sz size.Event) {
 	now := clock.Time(time.Since(startTime) * 60 / time.Second)
 	eng.Render(scene, now, sz)
 
+	gg.paint(glctx, sz)
+	
 	fps.Draw(sz)
 }
 
@@ -217,4 +225,3 @@ uniform vec4 color;
 void main() {
 	gl_FragColor = color;
 }`
-
