@@ -192,7 +192,7 @@ func onPaint(glctx gl.Context, sz size.Event) {
 	now := clock.Time(time.Since(startTime) * 60 / time.Second)
 	eng.Render(scene, now, sz)
 
-	gg.paint(glctx, sz)
+	gg.paint(glctx, sz, now)
 	
 	fps.Draw(sz)
 }
