@@ -29,8 +29,6 @@
 package main
 
 import (
-	"encoding/binary"
-	"log"
 	"time"
 
 	"golang.org/x/mobile/app"
@@ -50,11 +48,11 @@ import (
 var (
 	images   *glutil.Images
 	fps      *debug.FPS
-	program  gl.Program
-	position gl.Attrib
-	offset   gl.Uniform
-	color    gl.Uniform
-	buf      gl.Buffer
+	//program  gl.Program
+	//position gl.Attrib
+	//offset   gl.Uniform
+	//color    gl.Uniform
+	//buf      gl.Buffer
 
 	green  float32
 	touchX float32
@@ -104,6 +102,8 @@ func main() {
 			case touch.Event:
 				touchX = e.X
 				touchY = e.Y
+				gg.touch.X = e.X
+				gg.touch.Y = e.Y
 			}
 		}
 	})
@@ -112,24 +112,8 @@ func main() {
 var gg *Game
 
 func onStart(glctx gl.Context) {
-	var err error
-
 	gg = NewGame()
 	gg.start(glctx)
-
-	program, err = glutil.CreateProgram(glctx, vertexShader, fragmentShader)
-	if err != nil {
-		log.Printf("error creating GL program: %v", err)
-		return
-	}
-
-	buf = glctx.CreateBuffer()
-	glctx.BindBuffer(gl.ARRAY_BUFFER, buf)
-	glctx.BufferData(gl.ARRAY_BUFFER, triangleData, gl.STATIC_DRAW)
-
-	position = glctx.GetAttribLocation(program, "position")
-	color = glctx.GetUniformLocation(program, "color")
-	offset = glctx.GetUniformLocation(program, "offset")
 
 	images = glutil.NewImages(glctx)
 	fps = debug.NewFPS(images)
@@ -154,32 +138,17 @@ func onStart(glctx gl.Context) {
 }
 
 func onStop(glctx gl.Context) {
-	glctx.DeleteProgram(program)
-	glctx.DeleteBuffer(buf)
+	gg.stop(glctx)
+	//glctx.DeleteProgram(program)
+	//glctx.DeleteBuffer(buf)
 	fps.Release()
 	images.Release()
 }
 
 func onPaint(glctx gl.Context, sz size.Event) {
-	glctx.ClearColor(1, 0, 0, 1)
+	glctx.ClearColor(0.7, 0.8, 1, 1)
 	glctx.Clear(gl.COLOR_BUFFER_BIT)
-
-	glctx.UseProgram(program)
-
-	green += 0.005
-	if green > 1 {
-		green = 0.5
-	}
-	glctx.Uniform4f(color, 0, green, 0, 1)
-
-	glctx.Uniform2f(offset, touchX/float32(sz.WidthPx), touchY/float32(sz.HeightPx))
-
-	glctx.BindBuffer(gl.ARRAY_BUFFER, buf)
-	glctx.EnableVertexAttribArray(position)
-	glctx.VertexAttribPointer(position, coordsPerVertex, gl.FLOAT, false, 0, 0)
-	glctx.DrawArrays(gl.TRIANGLES, 0, vertexCount)
-	glctx.DisableVertexAttribArray(position)
-
+	
 	now := clock.Time(time.Since(startTime) * 60 / time.Second)
 	eng.Render(scene, now, sz)
 
@@ -187,32 +156,3 @@ func onPaint(glctx gl.Context, sz size.Event) {
 
 	fps.Draw(sz)
 }
-
-var triangleData = f32.Bytes(binary.LittleEndian,
-	-0.3, 0.1, 0.0,
-	0.3, 0.1, 0.0,
-	0.0, 0.4, 0.0,
-)
-
-const (
-	coordsPerVertex = 3
-	vertexCount     = 3
-)
-
-const vertexShader = `#version 100
-uniform vec2 offset;
-
-attribute vec4 position;
-void main() {
-	// offset comes in with x/y values between 0 and 1.
-	// position bounds are -1 to 1.
-	vec4 offset4 = vec4(2.0*offset.x-1.0, 1.0-2.0*offset.y, 0, 0);
-	gl_Position = position + offset4;
-}`
-
-const fragmentShader = `#version 100
-precision mediump float;
-uniform vec4 color;
-void main() {
-	gl_FragColor = color;
-}`

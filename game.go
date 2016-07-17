@@ -13,6 +13,10 @@ import (
 	"math/rand"
 )
 
+type Point struct {
+	X, Y float32
+}
+
 type QuixEnd struct {
 	X, Y   float32
 	Vx, Vy float32
@@ -91,6 +95,7 @@ type Game struct {
 	position    gl.Attrib
 	color       gl.Uniform
 	kitty       *KittySprite
+	touch	    Point
 }
 
 func NewGame() *Game {
@@ -129,6 +134,11 @@ func (g *Game) SpawnQuixen() {
 		},
 	}
 	g.quixen = append(g.quixen, q)
+}
+
+func (g *Game) stop(glctx gl.Context) {
+	glctx.DeleteProgram(g.quixShader)
+	glctx.DeleteBuffer(g.quixLineBuf)
 }
 
 func (g *Game) start(glctx gl.Context) error {
@@ -189,6 +199,24 @@ func (ks *KittySprite) bump(g *Game, t clock.Time) {
 	if t < ks.nextBump {
 		return
 	}
+	ks.P.Vx = g.touch.X - ks.P.X
+	ks.P.Vy = g.touch.Y - ks.P.Y
+	veclen := math.Sqrt(float64(ks.P.Vx) * float64(ks.P.Vx) +
+		float64(ks.P.Vy) * float64(ks.P.Vy))
+	if veclen <= 0 {
+		ks.P.Vx = 0
+		ks.P.Vy = 0
+	} else {
+		ks.P.Vx /= float32(veclen)
+		ks.P.Vy /= float32(veclen)
+		if veclen > 100 {
+			// high speed mode
+			ks.P.Vx *= 2
+			ks.P.Vy *= 2
+		}
+	}
+		
+	
 	(&ks.P).bump()
 	ks.nextBump = t+1
 }
