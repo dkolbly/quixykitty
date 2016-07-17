@@ -88,19 +88,47 @@ func (q *Quix) bump(glctx gl.Context, g *Game, t clock.Time) {
 }
 
 type CapturedRegion struct {
-	offset int
-	length int
+	vertices  []image.Point
+	triangles []polygon.IndexedTriangle
+	triOffset int
+	triLength int
+	dirty     bool
+}
+
+func (cr *CapturedRegion) bind(g *Game, glctx gl.Context) {
+	cr.dirty = false
+	cr.triOffset = 0
+	cr.triLength = len(cr.triangles)
+	data := []byte{}
+	// todo, make more efficient
+	for _, t := range cr.triangles {
+		a := cr.vertices[t[0]]
+		b := cr.vertices[t[1]]
+		c := cr.vertices[t[2]]
+		tri := f32.Bytes(
+			binary.LittleEndian,
+			float32(a.X), float32(a.Y),
+			float32(b.X), float32(b.Y),
+			float32(c.X), float32(c.Y),
+		)
+		data = append(data, tri...)
+	}
+
+	glctx.BindBuffer(gl.ARRAY_BUFFER, g.captureTriBuf)
+	glctx.BufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
 }
 
 type Game struct {
-	quixen      []Quix
-	captured    []CapturedRegion
-	quixLineBuf gl.Buffer
-	quixShader  gl.Program
-	position    gl.Attrib
-	color       gl.Uniform
-	kitty       *KittySprite
-	touch       image.Point
+	quixen        []Quix
+	captured      []*CapturedRegion
+	activeLineBuf gl.Buffer
+	captureTriBuf gl.Buffer
+	quixLineBuf   gl.Buffer
+	quixShader    gl.Program
+	position      gl.Attrib
+	color         gl.Uniform
+	kitty         *KittySprite
+	touch         image.Point
 }
 
 func NewGame() *Game {
@@ -119,20 +147,25 @@ func NewGame() *Game {
 			{52, 56},
 			{45, 50},
 			{40, 57},*/
-		{10, 65},
-		{50, 80},
-		{70, 55},
-		{95, 70},
-		{120, 40},
-		{90, 50},
-		{80, 30},
-		{63, 60},
-		{37, 50},
-		{40, 35},
+		{10-40, 65},
+		{50-40, 80},
+		{70-40, 55},
+		{95-40, 70},
+		{120-40, 40},
+		{90-40, 50},
+		{80-40, 30},
+		{63-40, 60},
+		{37-40, 50},
+		{40-40, 35},
 	}
 	l := polygon.Triangulate(v)
-	log.Printf("Indexes: %#v", l)
-
+	//log.Printf("Indexes: %#v", l)
+	g.captured = append(g.captured,
+		&CapturedRegion{
+			vertices:  v,
+			triangles: l,
+			dirty:     true,
+		})
 	return g
 }
 
@@ -173,6 +206,27 @@ func (g *Game) stop(glctx gl.Context) {
 }
 
 func (g *Game) start(glctx gl.Context) error {
+	g.captureTriBuf = glctx.CreateBuffer()
+
+	g.activeLineBuf = glctx.CreateBuffer()
+	glctx.BindBuffer(gl.ARRAY_BUFFER, g.activeLineBuf)
+	glctx.BufferData(gl.ARRAY_BUFFER,
+		make([]byte, 4*2*500),
+		gl.DYNAMIC_DRAW)
+	outline := f32.Bytes(
+		binary.LittleEndian,
+		-99, -99, // 0
+		99, -99,
+		99, 99,
+		-99, 99,
+		-99, -99,
+
+		10, 99,
+		10, 50,
+		90, 50,
+	)
+	glctx.BufferSubData(gl.ARRAY_BUFFER, 0, outline)
+
 	g.quixLineBuf = glctx.CreateBuffer()
 
 	shader, err := glutil.CreateProgram(
@@ -205,9 +259,41 @@ func (g *Game) start(glctx gl.Context) error {
 
 func (g *Game) paint(glctx gl.Context, sz size.Event, t clock.Time) {
 
+	// update things that need it
 	(&g.quixen[0]).bump(glctx, g, t)
 	g.kitty.bump(g, t)
 
+	// bind any new captured regions
+	for _, cr := range g.captured {
+		if cr.dirty {
+			cr.bind(g, glctx)
+		}
+	}
+
+	// ==== draw the bounding box ====
+	glctx.UseProgram(g.quixShader)
+
+	glctx.Uniform4f(g.color, 1, 0, 0, 1)
+
+	glctx.BindBuffer(gl.ARRAY_BUFFER, g.activeLineBuf)
+	glctx.EnableVertexAttribArray(g.position)
+	glctx.VertexAttribPointer(g.position, 2, gl.FLOAT, false, 0, 0)
+	glctx.DrawArrays(gl.LINE_STRIP, 0, 5)
+
+	// ==== draw the active segment chain ====
+	glctx.Uniform4f(g.color, 0, 0, 1, 1)
+	glctx.DrawArrays(gl.LINE_STRIP, 5, 3)
+
+	// ==== draw the capture region(s) ====
+	glctx.Uniform4f(g.color, 0.75, 0.5, 0.5, 1)
+	glctx.BindBuffer(gl.ARRAY_BUFFER, g.captureTriBuf)
+	glctx.VertexAttribPointer(g.position, 2, gl.FLOAT, false, 0, 0)
+	for _, cr := range g.captured {
+		glctx.DrawArrays(gl.TRIANGLES, cr.triOffset, 3*cr.triLength)
+	}
+	glctx.DisableVertexAttribArray(g.position)
+
+	// ==== draw the quixen ====
 	glctx.UseProgram(g.quixShader)
 
 	glctx.Uniform4f(g.color, 1, 1, 1, 1)

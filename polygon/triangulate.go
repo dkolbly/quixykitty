@@ -7,18 +7,26 @@ import (
 	"log"
 )
 
+const debug = false
+
 type IndexedTriangle [3]int
 
 type node struct {
 	prev, next int // doubly-linked-list pointers
 	index      int
 	vertex     image.Point // save some indirection
-	reflex bool	 // is it a reflex vertex?
+	reflex     bool        // is it a reflex vertex?
 }
 
 type triangulation struct {
 	nodes []node
 	start int
+	tris  []IndexedTriangle
+}
+
+func (tri *triangulation) add(a, b, c int) {
+	t := IndexedTriangle{a, b, c}
+	tri.tris = append(tri.tris, t)
 }
 
 // see:
@@ -46,18 +54,21 @@ func Triangulate(vertices []image.Point) []IndexedTriangle {
 		N[i].index = i
 		N[i].vertex = p
 		N[i].reflex = isReflex(vertices[pred], p, vertices[succ])
-		if N[i].reflex {
+		if N[i].reflex && debug {
 			log.Printf("v[%d] is reflex", i)
 		}
 	}
-	
+
 	// 2. find ears and carve them off
 	for i := 3; i < n; i++ {
 		e := tri.findEar()
 		ear := N[e]
-		log.Printf("*[%d] ear: {%d} %v  {%d}-{%d}-{%d}",
-			i, e, ear.vertex,
-			ear.prev, e, ear.next)
+		if debug {
+			log.Printf("*[%d] ear: {%d} %v  {%d}-{%d}-{%d}",
+				i, e, ear.vertex,
+				ear.prev, e, ear.next)
+		}
+		tri.add(ear.prev, e, ear.next)
 
 		// pop it out of the list
 		N[ear.next].prev = ear.prev
@@ -73,7 +84,7 @@ func Triangulate(vertices []image.Point) []IndexedTriangle {
 				N[N[i].prev].vertex,
 				N[i].vertex,
 				N[N[i].next].vertex)
-			if !N[i].reflex {
+			if !N[i].reflex && debug {
 				log.Printf("  de-reflexed {%d}", i)
 			}
 		}
@@ -83,7 +94,7 @@ func Triangulate(vertices []image.Point) []IndexedTriangle {
 				N[N[i].prev].vertex,
 				N[i].vertex,
 				N[N[i].next].vertex)
-			if !N[i].reflex {
+			if !N[i].reflex && debug {
 				log.Printf("  de-reflexed {%d}", i)
 			}
 		}
@@ -91,18 +102,19 @@ func Triangulate(vertices []image.Point) []IndexedTriangle {
 
 	e := tri.start
 	ear := N[e]
-	log.Printf("*[LAST] {%d}-{%d}-{%d}",
-		ear.prev, e, ear.next)
-		
-	panic("done")
-	return nil
-}
+	if debug {
+		log.Printf("*[LAST] {%d}-{%d}-{%d}",
+			ear.prev, e, ear.next)
+	}
+	tri.add(ear.prev, e, ear.next)
 
+	return tri.tris
+}
 
 func (tri *triangulation) findEar() int {
 
 	N := tri.nodes
-	for i := tri.start;; i = N[i].next {
+	for i := tri.start; ; i = N[i].next {
 		// is node[i] an ear?
 		v := N[i]
 		if v.reflex {
@@ -110,10 +122,12 @@ func (tri *triangulation) findEar() int {
 		}
 		vprev := N[v.prev]
 		vnext := N[v.next]
-		log.Printf("is {%d} %v an ear?", i, v.vertex)
+		if debug {
+			log.Printf("is {%d} %v an ear?", i, v.vertex)
+		}
 
 		contained := false
-		for j := tri.start;; j = N[j].next {
+		for j := tri.start; ; j = N[j].next {
 			if j != v.prev && j != v.next && N[j].reflex {
 				contained = isContained(
 					N[j].vertex,
@@ -121,8 +135,10 @@ func (tri *triangulation) findEar() int {
 					v.vertex,
 					vnext.vertex)
 				if contained {
-					log.Printf("nope, contains {%d} %v",
-						j, N[j].vertex)
+					if debug {
+						log.Printf("nope, contains {%d} %v",
+							j, N[j].vertex)
+					}
 					break
 				}
 			}
@@ -136,41 +152,41 @@ func (tri *triangulation) findEar() int {
 	}
 
 	/*
-	// 2. discard candidates that are not ear tips by checking to see
-	// if any reflex vertex is contained in it
-	for i := 0; i < len(eartips); {
-		contained := false
-		e := eartips[i]
-		pred := (e + n - 1) % n
-		succ := (e + 1) % n
+		// 2. discard candidates that are not ear tips by checking to see
+		// if any reflex vertex is contained in it
+		for i := 0; i < len(eartips); {
+			contained := false
+			e := eartips[i]
+			pred := (e + n - 1) % n
+			succ := (e + 1) % n
 
-		for _, r := range reflex {
-			if r == pred || r == succ {
-				// reflex vertices that are part of this
-				// triangle don't count
-				continue
+			for _, r := range reflex {
+				if r == pred || r == succ {
+					// reflex vertices that are part of this
+					// triangle don't count
+					continue
+				}
+				contained = isContained(
+					vertices[r],
+					vertices[pred],
+					vertices[e],
+					vertices[succ])
+				if contained {
+					break
+				}
 			}
-			contained = isContained(
-				vertices[r],
-				vertices[pred],
-				vertices[e],
-				vertices[succ])
 			if contained {
-				break
+				// discard
+				ne := len(eartips)
+				eartips[i] = eartips[ne-1]
+				eartips = eartips[:ne-1]
+			} else {
+				log.Printf("v[%d] is definitely an ear tip", e)
+				// continue
+				i++
 			}
 		}
-		if contained {
-			// discard
-			ne := len(eartips)
-			eartips[i] = eartips[ne-1]
-			eartips = eartips[:ne-1]
-		} else {
-			log.Printf("v[%d] is definitely an ear tip", e)
-			// continue
-			i++
-		}
-	}
-*/
+	*/
 }
 
 func isReflex(a, b, c image.Point) bool {

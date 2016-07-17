@@ -13,7 +13,7 @@ import (
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
 	"golang.org/x/mobile/event/touch"
-	"golang.org/x/mobile/exp/app/debug"
+	//"golang.org/x/mobile/exp/app/debug"
 	"golang.org/x/mobile/exp/f32"
 	"golang.org/x/mobile/exp/gl/glutil"
 	"golang.org/x/mobile/exp/sprite"
@@ -24,7 +24,7 @@ import (
 
 var (
 	images   *glutil.Images
-	fps      *debug.FPS
+	//fps      *debug.FPS
 )
 
 var eng sprite.Engine
@@ -85,7 +85,7 @@ func onStart(glctx gl.Context) {
 	gg.start(glctx)
 
 	images = glutil.NewImages(glctx)
-	fps = debug.NewFPS(images)
+	//fps = debug.NewFPS(images)
 	eng = glsprite.Engine(images)
 
 	// exprimental sprite stuff
@@ -107,7 +107,7 @@ func onStart(glctx gl.Context) {
 
 func onStop(glctx gl.Context) {
 	gg.stop(glctx)
-	fps.Release()
+	//fps.Release()
 	images.Release()
 }
 
@@ -120,5 +120,5 @@ func onPaint(glctx gl.Context, sz size.Event) {
 
 	gg.paint(glctx, sz, now)
 
-	fps.Draw(sz)
+	//fps.Draw(sz)
 }
