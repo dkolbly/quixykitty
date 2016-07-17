@@ -8,6 +8,8 @@ Compiling
 =========
 
 (1) read https://github.com/golang/go/wiki/Mobile
+     and http://godoc.org/golang.org/x/mobile/cmd/gomobile
+     to install gomobile
 
 (2) gomobile build -v -o new.apk -target=android/arm github.com/dkolbly/quixykitty
 
