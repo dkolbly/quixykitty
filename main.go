@@ -29,7 +29,6 @@
 package main
 
 import (
-	"math"
 	"encoding/binary"
 	"log"
 	"time"
@@ -115,10 +114,9 @@ var gg *Game
 func onStart(glctx gl.Context) {
 	var err error
 
-
 	gg = NewGame()
 	gg.start(glctx)
-	
+
 	program, err = glutil.CreateProgram(glctx, vertexShader, fragmentShader)
 	if err != nil {
 		log.Printf("error creating GL program: %v", err)
@@ -148,28 +146,11 @@ func onStart(glctx gl.Context) {
 
 	// add a node
 	thingy := &sprite.Node{
-		Arranger: ThingyArranger{},
+		Arranger: gg.kitty,
 	}
 	eng.Register(thingy)
 	scene.AppendChild(thingy)
 	texs = loadTextures(eng)
-}
-
-type ThingyArranger struct {
-}
-
-func (ta ThingyArranger) Arrange(e sprite.Engine, n *sprite.Node, t clock.Time) {
-	eng.SetSubTex(n, texs[5])
-	a := float64(t % 120) / 120 * 2 * math.Pi
-
-	sin := float32(48 * math.Sin(a))
-	cos := float32(48 * math.Cos(a))
-
-	// translate, scale, and rotate
-	tsr := f32.Affine{{cos, sin, 100}, {-sin, cos, 100}}
-	var m f32.Affine
-	(&m).Translate(&tsr, -0.5, -0.5)
-	eng.SetTransform(n, m)
 }
 
 func onStop(glctx gl.Context) {
@@ -203,7 +184,7 @@ func onPaint(glctx gl.Context, sz size.Event) {
 	eng.Render(scene, now, sz)
 
 	gg.paint(glctx, sz, now)
-	
+
 	fps.Draw(sz)
 }
 
