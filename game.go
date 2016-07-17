@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"encoding/binary"
 	"golang.org/x/mobile/event/size"
 	"golang.org/x/mobile/exp/f32"
@@ -11,11 +12,9 @@ import (
 	"log"
 	"math"
 	"math/rand"
-)
 
-type Point struct {
-	X, Y float32
-}
+	"github.com/dkolbly/quixykitty/polygon"
+)
 
 type QuixEnd struct {
 	X, Y   float32
@@ -88,20 +87,42 @@ func (q *Quix) bump(glctx gl.Context, g *Game, t clock.Time) {
 	}
 }
 
+type CapturedRegion struct {
+	offset int
+	length int
+}
+
 type Game struct {
 	quixen      []Quix
+	captured []CapturedRegion
 	quixLineBuf gl.Buffer
 	quixShader  gl.Program
 	position    gl.Attrib
 	color       gl.Uniform
 	kitty       *KittySprite
-	touch	    Point
+	touch	    image.Point
 }
 
 func NewGame() *Game {
 	g := &Game{}
 	g.kitty = &KittySprite{P: QuixEnd{X: 100, Y: 200, Vx: 1, Vy: -1}}
 	g.SpawnQuixen()
+
+	// test polygon capture
+	v := []image.Point{
+		{20, 50},
+		{20, 22},
+		{48, 15},
+		{70, 22},
+		{65, 50},
+		{52, 56},
+		{45, 50},
+		{40, 57},
+		
+	}
+	l := polygon.Triangulate(v)
+	log.Printf("Indexes: %#v", l)
+	
 	return g
 }
 
@@ -199,8 +220,8 @@ func (ks *KittySprite) bump(g *Game, t clock.Time) {
 	if t < ks.nextBump {
 		return
 	}
-	ks.P.Vx = g.touch.X - ks.P.X
-	ks.P.Vy = g.touch.Y - ks.P.Y
+	ks.P.Vx = float32(g.touch.X) - ks.P.X
+	ks.P.Vy = float32(g.touch.Y) - ks.P.Y
 	veclen := math.Sqrt(float64(ks.P.Vx) * float64(ks.P.Vx) +
 		float64(ks.P.Vy) * float64(ks.P.Vy))
 	if veclen <= 0 {

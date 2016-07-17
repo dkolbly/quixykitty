@@ -7,7 +7,7 @@ package main
 
 import (
 	"time"
-
+	
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/paint"
@@ -34,8 +34,10 @@ var startTime time.Time = time.Now()
 
 func main() {
 	app.Main(func(a app.App) {
+
 		var glctx gl.Context
-		var sz size.Event
+		var currentSize size.Event
+		
 		for e := range a.Events() {
 			switch e := a.Filter(e).(type) {
 			case lifecycle.Event:
@@ -49,7 +51,7 @@ func main() {
 					glctx = nil
 				}
 			case size.Event:
-				sz = e
+				currentSize = e
 				// TODO: Screen reorientation?
 				//touchX = float32(sz.WidthPx / 2)
 				//touchY = float32(sz.HeightPx / 2)
@@ -62,15 +64,15 @@ func main() {
 					continue
 				}
 
-				onPaint(glctx, sz)
+				onPaint(glctx, currentSize)
 				a.Publish()
 				// Drive the animation by preparing to
 				// paint the next frame after this one
 				// is shown.
 				a.Send(paint.Event{})
 			case touch.Event:
-				gg.touch.X = e.X
-				gg.touch.Y = e.Y
+				gg.touch.X = int(e.X)
+				gg.touch.Y = int(e.Y)
 			}
 		}
 	})
