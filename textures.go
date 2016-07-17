@@ -29,7 +29,7 @@ func loadTextures(eng sprite.Engine) []sprite.SubTex {
 	// adjacent textures leaking into a given texture.
 	// See: http://stackoverflow.com/questions/19611745/opengl-black-lines-in-between-tiles
 	ret := []sprite.SubTex{}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
 		s := sprite.SubTex{t, image.Rect(n*i+1, 0, n*(i+1)-1, n)}
 		ret = append(ret, s)
 	}

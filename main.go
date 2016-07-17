@@ -29,6 +29,7 @@
 package main
 
 import (
+	"math"
 	"encoding/binary"
 	"log"
 	"time"
@@ -158,8 +159,17 @@ type ThingyArranger struct {
 }
 
 func (ta ThingyArranger) Arrange(e sprite.Engine, n *sprite.Node, t clock.Time) {
-	eng.SetSubTex(n, texs[t%5])
-	eng.SetTransform(n, f32.Affine{{48, 0, 100}, {0, 48, 100}})
+	eng.SetSubTex(n, texs[5])
+	a := float64(t % 120) / 120 * 2 * math.Pi
+
+	sin := float32(48 * math.Sin(a))
+	cos := float32(48 * math.Cos(a))
+
+	// translate, scale, and rotate
+	tsr := f32.Affine{{cos, sin, 100}, {-sin, cos, 100}}
+	var m f32.Affine
+	(&m).Translate(&tsr, -0.5, -0.5)
+	eng.SetTransform(n, m)
 }
 
 func onStop(glctx gl.Context) {
