@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image"
 	"encoding/binary"
 	"golang.org/x/mobile/event/size"
 	"golang.org/x/mobile/exp/f32"
@@ -9,6 +8,7 @@ import (
 	"golang.org/x/mobile/exp/sprite"
 	"golang.org/x/mobile/exp/sprite/clock"
 	"golang.org/x/mobile/gl"
+	"image"
 	"log"
 	"math"
 	"math/rand"
@@ -94,13 +94,13 @@ type CapturedRegion struct {
 
 type Game struct {
 	quixen      []Quix
-	captured []CapturedRegion
+	captured    []CapturedRegion
 	quixLineBuf gl.Buffer
 	quixShader  gl.Program
 	position    gl.Attrib
 	color       gl.Uniform
 	kitty       *KittySprite
-	touch	    image.Point
+	touch       image.Point
 }
 
 func NewGame() *Game {
@@ -110,19 +110,29 @@ func NewGame() *Game {
 
 	// test polygon capture
 	v := []image.Point{
-		{20, 50},
-		{20, 22},
-		{48, 15},
-		{70, 22},
-		{65, 50},
-		{52, 56},
-		{45, 50},
-		{40, 57},
-		
+		/*
+			{20, 50},
+			{20, 22},
+			{48, 15},
+			{70, 22},
+			{65, 50},
+			{52, 56},
+			{45, 50},
+			{40, 57},*/
+		{10, 65},
+		{50, 80},
+		{70, 55},
+		{95, 70},
+		{120, 40},
+		{90, 50},
+		{80, 30},
+		{63, 60},
+		{37, 50},
+		{40, 35},
 	}
 	l := polygon.Triangulate(v)
 	log.Printf("Indexes: %#v", l)
-	
+
 	return g
 }
 
@@ -197,7 +207,7 @@ func (g *Game) paint(glctx gl.Context, sz size.Event, t clock.Time) {
 
 	(&g.quixen[0]).bump(glctx, g, t)
 	g.kitty.bump(g, t)
-	
+
 	glctx.UseProgram(g.quixShader)
 
 	glctx.Uniform4f(g.color, 1, 1, 1, 1)
@@ -222,8 +232,8 @@ func (ks *KittySprite) bump(g *Game, t clock.Time) {
 	}
 	ks.P.Vx = float32(g.touch.X) - ks.P.X
 	ks.P.Vy = float32(g.touch.Y) - ks.P.Y
-	veclen := math.Sqrt(float64(ks.P.Vx) * float64(ks.P.Vx) +
-		float64(ks.P.Vy) * float64(ks.P.Vy))
+	veclen := math.Sqrt(float64(ks.P.Vx)*float64(ks.P.Vx) +
+		float64(ks.P.Vy)*float64(ks.P.Vy))
 	if veclen <= 0 {
 		ks.P.Vx = 0
 		ks.P.Vy = 0
@@ -236,10 +246,9 @@ func (ks *KittySprite) bump(g *Game, t clock.Time) {
 			ks.P.Vy *= 2
 		}
 	}
-		
-	
+
 	(&ks.P).bump()
-	ks.nextBump = t+1
+	ks.nextBump = t + 1
 }
 
 func (ks *KittySprite) Arrange(e sprite.Engine, n *sprite.Node, t clock.Time) {
